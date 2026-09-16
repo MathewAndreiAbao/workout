@@ -7,18 +7,38 @@
     </ion-header>
 
     <ion-content>
-      <div v-if="isLoading" class="ion-text-center ion-padding">
-        <ion-spinner />
+      <ion-header collapse="condense">
+        <ion-toolbar>
+          <ion-title size="large">Workout Tracker</ion-title>
+        </ion-toolbar>
+      </ion-header>
+
+      <div v-if="!isLoading && !errorMessage && workouts.length > 0" class="summary">
+        <div class="summary-item">
+          <span class="summary-value">{{ workouts.length }}</span>
+          <span class="summary-label">Workouts</span>
+        </div>
+        <div class="summary-divider" />
+        <div class="summary-item">
+          <span class="summary-value">{{ totalMinutes }}</span>
+          <span class="summary-label">Minutes</span>
+        </div>
       </div>
 
-      <ion-text v-else-if="errorMessage" color="danger">
-        <p class="ion-padding">{{ errorMessage }}</p>
-      </ion-text>
+      <div v-if="isLoading" class="state-block ion-text-center">
+        <ion-spinner name="crescent" />
+      </div>
 
-      <div v-else-if="workouts.length === 0" class="empty-state ion-padding ion-text-center">
-        <ion-icon :icon="barbellIcon" size="large" color="medium" />
-        <p>No workouts yet.</p>
-        <p>Tap the + button to log your first workout.</p>
+      <div v-else-if="errorMessage" class="state-block ion-text-center">
+        <ion-icon :icon="alertIcon" size="large" />
+        <p class="state-title">Something went wrong</p>
+        <p class="state-body">{{ errorMessage }}</p>
+      </div>
+
+      <div v-else-if="workouts.length === 0" class="state-block ion-text-center">
+        <ion-icon :icon="barbellIcon" size="large" />
+        <p class="state-title">No workouts yet</p>
+        <p class="state-body">Tap the + button to log your first workout.</p>
       </div>
 
       <ion-list v-else>
@@ -41,7 +61,7 @@
         <WorkoutFormModal
           v-if="isModalOpen"
           :workout="workoutBeingEdited"
-          @save="saveWorkout"
+          :on-save="saveWorkout"
           @close="closeModal"
         />
       </ion-modal>
@@ -50,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import {
   IonContent,
   IonFab,
@@ -61,12 +81,12 @@ import {
   IonModal,
   IonPage,
   IonSpinner,
-  IonText,
   IonTitle,
   IonToolbar,
   alertController,
+  toastController,
 } from '@ionic/vue';
-import { add as addIcon, barbell as barbellIcon } from 'ionicons/icons';
+import { add as addIcon, alertCircle as alertIcon, barbell as barbellIcon } from 'ionicons/icons';
 import WorkoutCard from '@/components/WorkoutCard.vue';
 import WorkoutFormModal from '@/components/WorkoutFormModal.vue';
 import { useWorkouts } from '@/composables/useWorkouts';
@@ -74,6 +94,8 @@ import type { Workout, WorkoutInput } from '@/types/workout';
 
 const { workouts, isLoading, errorMessage, addWorkout, updateWorkout, deleteWorkout } =
   useWorkouts();
+
+const totalMinutes = computed(() => workouts.value.reduce((sum, w) => sum + (w.duration || 0), 0));
 
 // Only two pieces of state control the modal: whether it is open, and which
 // workout (if any) it is editing.
@@ -95,15 +117,27 @@ function closeModal() {
   workoutBeingEdited.value = null;
 }
 
+async function showToast(message: string, color: 'success' | 'danger' = 'success') {
+  const toast = await toastController.create({
+    message,
+    duration: 2200,
+    position: 'bottom',
+    color,
+  });
+  await toast.present();
+}
+
 // CREATE or UPDATE, depending on whether we opened the modal for a new
-// workout or an existing one.
+// workout or an existing one. Left to throw on failure so the form modal
+// can catch it, keep itself open, and show the user what went wrong.
 async function saveWorkout(data: WorkoutInput) {
+  const wasEditing = !!workoutBeingEdited.value;
   if (workoutBeingEdited.value) {
     await updateWorkout(workoutBeingEdited.value.id, data);
   } else {
     await addWorkout(data);
   }
-  closeModal();
+  await showToast(wasEditing ? 'Workout updated.' : 'Workout added.');
 }
 
 // DELETE, guarded by a confirmation prompt so a swipe can't destroy data by accident.
@@ -113,7 +147,19 @@ async function confirmDelete(workout: Workout) {
     message: `Delete "${workout.exerciseName}"? This cannot be undone.`,
     buttons: [
       { text: 'Cancel', role: 'cancel' },
-      { text: 'Delete', role: 'destructive', handler: () => deleteWorkout(workout.id) },
+      {
+        text: 'Delete',
+        role: 'destructive',
+        handler: async () => {
+          try {
+            await deleteWorkout(workout.id);
+            await showToast('Workout deleted.');
+          } catch (error) {
+            console.error('Failed to delete workout:', error);
+            await showToast('Could not delete this workout. Try again.', 'danger');
+          }
+        },
+      },
     ],
   });
   await alert.present();
@@ -121,8 +167,61 @@ async function confirmDelete(workout: Workout) {
 </script>
 
 <style scoped>
-.empty-state {
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 20px 16px;
+  border-bottom: var(--app-border-subtle);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.summary-value {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.summary-label {
+  font-size: 12px;
   color: var(--ion-color-medium);
-  margin-top: 15%;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.summary-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--ion-color-step-150);
+}
+
+.state-block {
+  color: var(--ion-color-medium);
+  margin-top: 18%;
+  padding: 0 32px;
+}
+
+.state-block ion-icon {
+  font-size: 40px;
+  color: var(--ion-color-step-350);
+}
+
+.state-title {
+  color: var(--ion-color-primary);
+  font-weight: 600;
+  font-size: 16px;
+  margin: 12px 0 4px;
+}
+
+.state-body {
+  font-size: 14px;
+  margin: 0;
 }
 </style>

@@ -1,0 +1,100 @@
+/*
+ * Global, monochrome component styling shared across the app.
+ * Kept deliberately flat (borders instead of shadows) for an elegant,
+ * modern, black-and-white look.
+ */
+
+* {
+  font-family: var(--app-font);
+}
+
+ion-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+ion-toolbar {
+  --border-width: 0 0 1px 0;
+  --border-color: var(--ion-color-step-150);
+  --padding-top: 4px;
+  --padding-bottom: 4px;
+}
+
+ion-content {
+  --background: #ffffff;
+}
+
+/* Buttons: solid black fill or plain text, no gradients or shadows */
+ion-button {
+  --border-radius: var(--app-radius-sm);
+  --box-shadow: none;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+ion-fab-button {
+  --background: var(--ion-color-primary);
+  --background-activated: var(--ion-color-primary-shade);
+  --background-hover: var(--ion-color-primary-tint);
+  --box-shadow: 0 6px 16px rgba(17, 17, 17, 0.25);
+  --border-radius: 16px;
+}
+
+/* Inputs: clean underline/border style, no filled backgrounds */
+ion-item {
+  --background: transparent;
+  --border-color: var(--ion-color-step-150);
+  --highlight-color-focused: var(--ion-color-primary);
+  --padding-start: 0;
+  --inner-padding-end: 0;
+}
+
+ion-input,
+ion-textarea,
+ion-select {
+  --padding-top: 10px;
+  --padding-bottom: 10px;
+  font-weight: 500;
+}
+
+ion-input.ion-invalid.ion-touched,
+ion-textarea.ion-invalid.ion-touched,
+ion-select.ion-invalid.ion-touched {
+  --border-color: var(--ion-color-danger);
+  --highlight-color-invalid: var(--ion-color-danger);
+}
+
+ion-badge {
+  --padding-start: 10px;
+  --padding-end: 10px;
+  --padding-top: 5px;
+  --padding-bottom: 5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+}
+
+ion-modal {
+  --border-radius: 20px 20px 0 0;
+}
+
+ion-list {
+  background: transparent;
+}
+
+.field-error {
+  color: var(--ion-color-danger);
+  font-size: 12.5px;
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
